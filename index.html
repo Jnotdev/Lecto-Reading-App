@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f4f0e8">
+  <title>Lecto — your reading nook</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <main class="app-shell">
+    <section id="library-screen" class="screen" aria-labelledby="app-title">
+      <header class="library-header">
+        <div>
+          <h1 id="app-title">Lecto<span class="title-period">.</span></h1>
+        </div>
+        <button id="settings-button" class="icon-button" type="button" aria-label="Open settings" title="Settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.25a3.75 3.75 0 1 0 0 7.5 3.75 3.75 0 0 0 0-7.5Z"/><path d="m19.4 13.5 1.1.86-1.1 1.9-1.35-.47a7.9 7.9 0 0 1-1.65.96l-.25 1.42h-2.2l-.25-1.42a7.9 7.9 0 0 1-1.65-.96l-1.35.47-1.1-1.9 1.1-.86a7.4 7.4 0 0 1 0-1.9l-1.1-.86 1.1-1.9 1.35.47a7.9 7.9 0 0 1 1.65-.96l.25-1.42h2.2l.25 1.42a7.9 7.9 0 0 1 1.65.96l1.35-.47 1.1 1.9-1.1.86a7.4 7.4 0 0 1 0 1.9Z" transform="translate(-1.2 -1.1) scale(1.08)"/></svg>
+        </button>
+      </header>
+
+      <div class="library-intro">
+        <div>
+          <p class="section-kicker">YOUR PERSONAL LIBRARY</p>
+          <h2>Pick up where you left off.</h2>
+        </div>
+        <button id="import-button" class="primary-button" type="button">
+          <span class="plus-icon" aria-hidden="true">+</span>
+          <span>Import a book</span>
+        </button>
+        <input id="file-input" type="file" accept=".txt,.pdf,text/plain,application/pdf" hidden>
+      </div>
+
+      <p id="library-status" class="status-message" role="status" aria-live="polite"></p>
+      <div id="library-list" class="book-list" aria-label="Your books"></div>
+      <p class="library-footnote">Your books and reading progress stay on this device.</p>
+    </section>
+
+    <section id="settings-screen" class="screen" aria-labelledby="settings-title" hidden>
+      <header class="subpage-header">
+        <button class="text-button back-button" type="button" data-screen="library">← <span>Library</span></button>
+        <span class="section-kicker">MAKE IT YOURS</span>
+      </header>
+      <div class="settings-heading">
+        <p class="eyebrow">A few little adjustments</p>
+        <h1 id="settings-title">Reading settings</h1>
+        <p>Set a comfortable pace.</p>
+      </div>
+      <form id="settings-form" class="settings-card">
+        <label class="setting-control" for="chunk-size">
+          <span class="setting-label">
+            <span>Words per page</span>
+            <output id="chunk-size-output" for="chunk-size">250</output>
+          </span>
+          <input id="chunk-size" name="chunkSize" type="range" min="50" max="500" step="10" value="250">
+          <span class="range-ends"><span>50 words</span><span>500 words</span></span>
+        </label>
+        <fieldset class="theme-picker">
+          <legend>Color scheme</legend>
+          <div class="theme-options">
+            <label class="theme-option">
+              <input type="radio" name="theme" value="Warm" checked>
+              <span class="theme-swatch warm-swatch" aria-hidden="true"></span>
+              <span>Warm</span>
+            </label>
+            <label class="theme-option">
+              <input type="radio" name="theme" value="Cool">
+              <span class="theme-swatch cool-swatch" aria-hidden="true"></span>
+              <span>Cool</span>
+            </label>
+            <label class="theme-option">
+              <input type="radio" name="theme" value="Night">
+              <span class="theme-swatch night-swatch" aria-hidden="true"></span>
+              <span>Night</span>
+            </label>
+          </div>
+        </fieldset>
+        <div class="settings-actions">
+          <button class="primary-button" type="submit">Apply settings</button>
+          <button class="text-button" type="button" data-screen="library">Cancel</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="reader-screen" class="screen reader-screen" aria-labelledby="reader-title" hidden>
+      <header class="reader-header">
+        <button class="text-button back-button" type="button" data-screen="library">← <span>Library</span></button>
+        <span id="page-count" class="page-count" aria-live="polite">01 / 01</span>
+      </header>
+      <article id="reader-card" class="reader-card">
+        <div class="reader-book-heading">
+          <p class="section-kicker">NOW READING</p>
+          <h1 id="reader-title"></h1>
+          <p id="reader-author" class="reader-author"></p>
+        </div>
+        <div class="reader-divider" aria-hidden="true"><span></span></div>
+        <p id="reader-content" class="reader-content" tabindex="0"></p>
+        <div class="reader-navigation" aria-label="Page navigation">
+          <button id="previous-page" class="nav-button" type="button" aria-label="Previous page">← <span>Previous</span></button>
+          <span id="reader-hint" class="reader-hint">Swipe up or down to turn the page</span>
+          <button id="next-page" class="nav-button" type="button" aria-label="Next page"><span>Next</span> →</button>
+        </div>
+      </article>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
