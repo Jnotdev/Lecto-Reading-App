@@ -4,7 +4,7 @@ const STORAGE_KEY = "lecto-webapp-v1";
 const THEMES = {
   Warm: { background: "#f4f0e8", reader: "#fffaf0", text: "#211f1b", muted: "#716d63", accent: "#266a68" },
   Cool: { background: "#e9f0f2", reader: "#f7fbfc", text: "#17252b", muted: "#5f7076", accent: "#2c6078" },
-  Night: { background: "#202628", reader: "#171b1d", text: "#ddf4dd", muted: "#aab7b2", accent: "#78c0b5" }
+  Night: { background: "#202628", reader: "#171b1d", text: "#ddf4dd", muted: "#aab7b2", accent: "#2c6078" }
 };
 const DEFAULT_BOOKS = [
   {

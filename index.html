@@ -13,10 +13,18 @@
     <section id="library-screen" class="screen" aria-labelledby="app-title">
       <header class="library-header">
         <div>
-          <h1 id="app-title">Lecto<span class="title-period">.</span></h1>
+          <h1 id="app-title">
+            <svg viewBox="0 0 150 150" role="img" aria-label="Lecto" xmlns="http://www.w3.org/2000/svg">
+              <path d="M121.385 23C126.632 23.0001 131.167 26.6483 132.271 31.7572L149.746 112.573C151.24 119.481 145.955 126 138.86 126H11.1462C3.39237 126 -1.98851 118.303 0.701407 111.059L6.81476 94.5971C8.60302 89.782 13.4753 86.8193 18.5925 87.4338L69.2176 93.5154L15.2259 42.1113C7.96617 35.1993 12.8781 23.0001 22.9208 23H121.385Z" fill="currentColor"/>
+            </svg>
+          </h1>
         </div>
         <button id="settings-button" class="icon-button" type="button" aria-label="Open settings" title="Settings">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.25a3.75 3.75 0 1 0 0 7.5 3.75 3.75 0 0 0 0-7.5Z"/><path d="m19.4 13.5 1.1.86-1.1 1.9-1.35-.47a7.9 7.9 0 0 1-1.65.96l-.25 1.42h-2.2l-.25-1.42a7.9 7.9 0 0 1-1.65-.96l-1.35.47-1.1-1.9 1.1-.86a7.4 7.4 0 0 1 0-1.9l-1.1-.86 1.1-1.9 1.35.47a7.9 7.9 0 0 1 1.65-.96l.25-1.42h2.2l.25 1.42a7.9 7.9 0 0 1 1.65.96l1.35-.47 1.1 1.9-1.1.86a7.4 7.4 0 0 1 0 1.9Z" transform="translate(-1.2 -1.1) scale(1.08)"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="5" r="1.5"/>
+            <circle cx="12" cy="12" r="1.5"/>
+            <circle cx="12" cy="19" r="1.5"/>
+          </svg>
         </button>
       </header>
 
@@ -40,12 +48,11 @@
     <section id="settings-screen" class="screen" aria-labelledby="settings-title" hidden>
       <header class="subpage-header">
         <button class="text-button back-button" type="button" data-screen="library">← <span>Library</span></button>
-        <span class="section-kicker">MAKE IT YOURS</span>
+
       </header>
       <div class="settings-heading">
-        <p class="eyebrow">A few little adjustments</p>
-        <h1 id="settings-title">Reading settings</h1>
-        <p>Set a comfortable pace.</p>
+        <h1 id="settings-title">Preferences</h1>
+        <p class="eyebrow">Make yourself comfortable</p>
       </div>
       <form id="settings-form" class="settings-card">
         <label class="setting-control" for="chunk-size">

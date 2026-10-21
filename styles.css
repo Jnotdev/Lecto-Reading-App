@@ -4,7 +4,7 @@
   --reader-background: #fffaf0;
   --text: #211f1b;
   --muted: #716d63;
-  --accent: #266a68;
+  --accent: #2c6078;
   --line: rgba(33, 31, 27, .12);
   --soft-accent: rgba(38, 106, 104, .09);
   --body-font: Arial, Helvetica, sans-serif;
@@ -31,11 +31,12 @@ button:focus-visible, input:focus-visible, .reader-content:focus-visible { outli
 .eyebrow, .section-kicker { margin: 0; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
 .eyebrow { margin-bottom: 7px; }
 h1, h2, p { margin-top: 0; }
-.library-header h1 { margin: 0; font-family: var(--display-font); font-size: 42px; font-weight: 400; letter-spacing: -.04em; line-height: 1; }
+.library-header h1 { margin: 0; line-height: 0; }
+.library-header h1 svg { display: block; width: 100px; height: 72px; color: var(--accent); }
 .title-period { color: var(--accent); }
-.icon-button { display: grid; width: 44px; height: 44px; place-items: center; border: 1px solid var(--line); border-radius: 50%; background: transparent; color: var(--accent); cursor: pointer; transition: background .18s, transform .18s; }
-.icon-button:hover { transform: rotate(12deg); background: var(--soft-accent); }
-.icon-button svg { width: 21px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.5; }
+.icon-button { display: grid; width: 44px; height: 44px; place-items: center; border: 1px solid var(--line); border-radius: 50%; background: transparent; color: var(--accent); cursor: pointer; transition: background .18s; }
+.icon-button:hover { transform: none; background: var(--soft-accent); }
+.icon-button svg { display: block; width: 21px; height: 21px; fill: currentColor; }
 .library-intro { display: flex; align-items: end; justify-content: space-between; gap: 18px; margin-bottom: 26px; }
 .library-intro .section-kicker { margin-bottom: 11px; }
 .library-intro h2 { margin: 0; font-family: var(--display-font); font-size: clamp(26px, 4vw, 36px); font-weight: 400; letter-spacing: -.025em; }
