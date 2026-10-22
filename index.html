@@ -4,7 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f4f0e8">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Lecto">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>Lecto — your reading nook</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icons/lecto-icon-180.png">
+  <link rel="icon" href="./icons/lecto-icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
   <script src="app.js" defer></script>
 </head>
@@ -154,6 +160,18 @@
       <div class="confirmation-actions">
         <button id="cancel-delete" class="text-button" type="button">Keep book</button>
         <button id="confirm-delete" class="danger-button" type="button">Delete book</button>
+      </div>
+    </div>
+  </dialog>
+  <dialog id="install-dialog" class="confirmation-dialog install-dialog" aria-labelledby="install-dialog-title" aria-describedby="install-dialog-message">
+    <div class="confirmation-content">
+      <p class="eyebrow">LECTO ON YOUR PHONE</p>
+      <h2 id="install-dialog-title">Take Lecto with you</h2>
+      <p id="install-dialog-message" class="confirmation-message"></p>
+      <ol id="install-dialog-steps" class="install-steps"></ol>
+      <div class="confirmation-actions">
+        <button id="dismiss-install" class="text-button" type="button">Maybe later</button>
+        <button id="confirm-install" class="primary-button" type="button">Got it</button>
       </div>
     </div>
   </dialog>

@@ -53,7 +53,13 @@ const fileInput = document.querySelector("#file-input");
 const settingsForm = document.querySelector("#settings-form");
 const toast = document.querySelector("#toast");
 const deleteBookDialog = document.querySelector("#delete-book-dialog");
+const installDialog = document.querySelector("#install-dialog");
+const installDialogMessage = document.querySelector("#install-dialog-message");
+const installDialogSteps = document.querySelector("#install-dialog-steps");
+const confirmInstallButton = document.querySelector("#confirm-install");
 let deleteBookId = null;
+let deferredInstallPrompt = null;
+let installPlatform = null;
 
 let needsLibraryMigration = false;
 let state = loadState();
@@ -531,6 +537,78 @@ function showToast(message) {
   toastTimeout = setTimeout(() => toast.classList.remove("visible"), 4200);
 }
 
+function detectInstallPlatform() {
+  const userAgent = navigator.userAgent;
+  if (/Android/i.test(userAgent)) return "android";
+  if (/iPhone|iPad|iPod/i.test(userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)) return "apple";
+  return null;
+}
+
+function isInstalledAsApp() {
+  return window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+}
+
+function isSecureInstallOrigin() {
+  return location.protocol === "https:"
+    || ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
+}
+
+function showInstallPrompt() {
+  installPlatform = detectInstallPlatform();
+  if (!installPlatform || !isSecureInstallOrigin() || isInstalledAsApp()
+    || sessionStorage.getItem("lecto-install-prompt-dismissed")) return;
+
+  const instructions = installPlatform === "apple"
+    ? {
+      message: "Add Lecto to your Home Screen for a focused, app-like reading experience.",
+      steps: ["Open this page in Safari.", "Tap the Share button.", "Choose “Add to Home Screen,” then tap “Add.”"]
+    }
+    : {
+      message: "Install Lecto to add it to your phone’s app library and open it like an app.",
+      steps: ["Tap “Install app” when your browser offers it.", "If there is no install button, open the browser menu and choose “Install app” or “Add to Home screen.”"]
+    };
+  installDialogMessage.textContent = instructions.message;
+  installDialogSteps.replaceChildren(...instructions.steps.map(text => {
+    const item = document.createElement("li");
+    item.textContent = text;
+    return item;
+  }));
+  confirmInstallButton.textContent = installPlatform === "android" && deferredInstallPrompt
+    ? "Install app"
+    : "Got it";
+  installDialog.showModal();
+}
+
+function dismissInstallPrompt() {
+  sessionStorage.setItem("lecto-install-prompt-dismissed", "true");
+  installDialog.close();
+}
+
+window.addEventListener("beforeinstallprompt", event => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  if (installPlatform === "android" && installDialog.open) {
+    confirmInstallButton.textContent = "Install app";
+  }
+});
+window.addEventListener("appinstalled", () => {
+  deferredInstallPrompt = null;
+  if (installDialog.open) installDialog.close();
+});
+document.querySelector("#dismiss-install").addEventListener("click", dismissInstallPrompt);
+confirmInstallButton.addEventListener("click", async () => {
+  if (installPlatform !== "android" || !deferredInstallPrompt) {
+    dismissInstallPrompt();
+    return;
+  }
+  const promptEvent = deferredInstallPrompt;
+  deferredInstallPrompt = null;
+  await promptEvent.prompt();
+  await promptEvent.userChoice;
+  dismissInstallPrompt();
+});
+
 async function importFile(file) {
   if (!file) return;
   const extension = file.name.toLowerCase().split(".").pop();
@@ -857,3 +935,10 @@ window.addEventListener("resize", () => {
 
 applyTheme(state.settings.theme);
 renderLibrary();
+if ("serviceWorker" in navigator && isSecureInstallOrigin()) {
+  navigator.serviceWorker.register("./service-worker.js")
+    .catch(error => console.error("Could not register the Lecto service worker.", error));
+}
+if (detectInstallPlatform() && isSecureInstallOrigin() && !isInstalledAsApp()) {
+  window.setTimeout(showInstallPrompt, 900);
+}
