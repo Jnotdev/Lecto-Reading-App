@@ -15,7 +15,7 @@
         <div>
           <h1 id="app-title">
             <svg viewBox="0 0 150 150" role="img" aria-label="Lecto" xmlns="http://www.w3.org/2000/svg">
-              <path d="M121.385 23C126.632 23.0001 131.167 26.6483 132.271 31.7572L149.746 112.573C151.24 119.481 145.955 126 138.86 126H11.1462C3.39237 126 -1.98851 118.303 0.701407 111.059L6.81476 94.5971C8.60302 89.782 13.4753 86.8193 18.5925 87.4338L69.2176 93.5154L15.2259 42.1113C7.96617 35.1993 12.8781 23.0001 22.9208 23H121.385Z" fill="currentColor"/>
+              <path d="M28.6146 23C23.368 23.0001 18.8333 26.6483 17.7286 31.7572L0.253906 112.573C-1.2397 119.481 4.04544 126 11.1399 126H138.854C146.608 126 151.989 118.303 149.299 111.059L143.185 94.5971C141.397 89.782 136.525 86.8193 131.408 87.4338L80.7824 93.5154L134.774 42.1113C142.034 35.1993 137.122 23.0001 127.079 23H28.6146Z" fill="currentColor"/>
             </svg>
           </h1>
         </div>
@@ -37,7 +37,7 @@
           <span class="plus-icon" aria-hidden="true">+</span>
           <span>Import a book</span>
         </button>
-        <input id="file-input" type="file" accept=".txt,.pdf,text/plain,application/pdf" hidden>
+        <input id="file-input" type="file" accept=".txt,.pdf,.epub,.mobi,.azw,.azw3,text/plain,application/pdf,application/epub+zip,application/x-mobipocket-ebook" hidden>
       </div>
 
       <p id="library-status" class="status-message" role="status" aria-live="polite"></p>
@@ -81,6 +81,26 @@
               <span class="theme-swatch night-swatch" aria-hidden="true"></span>
               <span>Night</span>
             </label>
+            <label class="theme-option">
+              <input type="radio" name="theme" value="Sage">
+              <span class="theme-swatch sage-swatch" aria-hidden="true"></span>
+              <span>Sage</span>
+            </label>
+            <label class="theme-option">
+              <input type="radio" name="theme" value="Rose">
+              <span class="theme-swatch rose-swatch" aria-hidden="true"></span>
+              <span>Rose</span>
+            </label>
+            <label class="theme-option">
+              <input type="radio" name="theme" value="Lavender">
+              <span class="theme-swatch lavender-swatch" aria-hidden="true"></span>
+              <span>Lavender</span>
+            </label>
+            <label class="theme-option">
+              <input type="radio" name="theme" value="Forest">
+              <span class="theme-swatch forest-swatch" aria-hidden="true"></span>
+              <span>Forest</span>
+            </label>
           </div>
         </fieldset>
         <div class="settings-actions">
@@ -93,16 +113,31 @@
     <section id="reader-screen" class="screen reader-screen" aria-labelledby="reader-title" hidden>
       <header class="reader-header">
         <button class="text-button back-button" type="button" data-screen="library">← <span>Library</span></button>
-        <span id="page-count" class="page-count" aria-live="polite">01 / 01</span>
+        <div class="reader-progress">
+          <label id="chapter-navigation" class="chapter-navigation" hidden>
+            <span>Chapter</span>
+            <span class="chapter-picker">
+              <button id="chapter-picker-toggle" class="chapter-picker-toggle" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="chapter-picker-menu">
+                <span id="chapter-picker-value">Select chapter</span>
+                <svg viewBox="0 0 12 12" aria-hidden="true"><path d="m2.5 4.5 3.5 3 3.5-3"/></svg>
+              </button>
+              <span id="chapter-picker-menu" class="chapter-picker-menu" role="listbox" aria-label="Chapters" hidden></span>
+            </span>
+          </label>
+          <span id="page-count" class="page-count" aria-live="polite">01 / 01</span>
+        </div>
       </header>
       <article id="reader-card" class="reader-card">
         <div class="reader-book-heading">
           <p class="section-kicker">NOW READING</p>
           <h1 id="reader-title"></h1>
           <p id="reader-author" class="reader-author"></p>
+          <p id="reader-chapter-title" class="reader-chapter-title" hidden></p>
         </div>
         <div class="reader-divider" aria-hidden="true"><span></span></div>
-        <p id="reader-content" class="reader-content" tabindex="0"></p>
+        <div class="reader-page-viewport">
+          <p id="reader-content" class="reader-content" tabindex="0"></p>
+        </div>
         <div class="reader-navigation" aria-label="Page navigation">
           <button id="previous-page" class="nav-button" type="button" aria-label="Previous page">← <span>Previous</span></button>
           <span id="reader-hint" class="reader-hint">Swipe up or down to turn the page</span>
@@ -111,6 +146,17 @@
       </article>
     </section>
   </main>
+  <dialog id="delete-book-dialog" class="confirmation-dialog" aria-labelledby="delete-dialog-title" aria-describedby="delete-dialog-message">
+    <div class="confirmation-content">
+      <p class="eyebrow">YOUR LIBRARY</p>
+      <h2 id="delete-dialog-title">Remove this book?</h2>
+      <p id="delete-dialog-message" class="confirmation-message"></p>
+      <div class="confirmation-actions">
+        <button id="cancel-delete" class="text-button" type="button">Keep book</button>
+        <button id="confirm-delete" class="danger-button" type="button">Delete book</button>
+      </div>
+    </div>
+  </dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 </body>
 </html>

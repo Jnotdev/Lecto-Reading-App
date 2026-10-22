@@ -1,30 +1,46 @@
 "use strict";
 
 const STORAGE_KEY = "lecto-webapp-v1";
+const LEGACY_DEFAULT_BOOK_IDS = new Set(["sample-testing-1", "sample-testing-2"]);
 const THEMES = {
   Warm: { background: "#f4f0e8", reader: "#fffaf0", text: "#211f1b", muted: "#716d63", accent: "#266a68" },
   Cool: { background: "#e9f0f2", reader: "#f7fbfc", text: "#17252b", muted: "#5f7076", accent: "#2c6078" },
-  Night: { background: "#202628", reader: "#171b1d", text: "#ddf4dd", muted: "#aab7b2", accent: "#2c6078" }
+  Night: { background: "#202628", reader: "#171b1d", text: "#ddf4dd", muted: "#aab7b2", accent: "#2c6078" },
+  Sage: { background: "#e8eee5", reader: "#f5f8f1", text: "#243027", muted: "#657367", accent: "#52745a" },
+  Rose: { background: "#f3e8e8", reader: "#fff7f5", text: "#342426", muted: "#786568", accent: "#9a5368" },
+  Lavender: { background: "#eeeaf4", reader: "#faf7ff", text: "#292336", muted: "#6c657a", accent: "#7256a5" },
+  Forest: { background: "#1d2924", reader: "#17211d", text: "#e3efe5", muted: "#aab9ad", accent: "#3a6b45" }
 };
 const DEFAULT_BOOKS = [
   {
-    id: "sample-testing-1",
-    title: "Testing File 1",
-    author: "Pre-Added",
-    sourceText: "This is a test file. It only has a few scentences",
-    progress: 0
-  },
-  {
-    id: "sample-testing-2",
-    title: "Testing File 2 (With Scrolling)",
-    author: "Pre-Added",
-    sourceText: "This is another test file. It also has a few scentences. But a lot of numbers. 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80",
+    id: "welcome-to-lecto",
+    title: "Welcome to Lecto!",
+    author: "Your reading guide",
+    chapters: [
+      {
+        title: "Welcome",
+        text: "Welcome to Lecto, a personalized reading improvement experience. This short guide walks you through the features so you can settle in and start reading. Use the chapter menu at the top to jump between topics, or turn pages to explore them in order."
+      },
+      {
+        title: "Your library",
+        text: "Your library keeps the books you add on this device. Choose a book to continue reading; Lecto remembers your place as you go. To remove a book, use its delete button and confirm the choice in the dialog."
+      },
+      {
+        title: "Import a book",
+        text: "Choose Import a book in your library to add a file. Lecto can read plain text TXT, PDF, EPUB, MOBI, AZW, and AZW3 files. Some MOBI and Kindle files use DRM or unsupported variants and may not open. Imported books are kept in this app locally."
+      },
+      {
+        title: "Chapters and pages",
+        text: "For books with chapter information, use the Chapter menu to jump straight to a chapter. Chapter breaks start a fresh page sequence. Use Previous and Next, the arrow keys, or swipe vertically on the reading page to turn pages."
+      }
+    ],
     progress: 0
   }
 ];
 const DEFAULT_SETTINGS = { chunkSize: 250, theme: "Warm" };
 const MIN_READER_TEXT_SIZE = 10;
-const MAX_READER_TEXT_SIZE = 28;
+const MIN_READER_MAX_TEXT_SIZE = 28;
+const MAX_READER_MAX_TEXT_SIZE = 48;
 
 const screens = {
   library: document.querySelector("#library-screen"),
@@ -36,12 +52,18 @@ const libraryStatus = document.querySelector("#library-status");
 const fileInput = document.querySelector("#file-input");
 const settingsForm = document.querySelector("#settings-form");
 const toast = document.querySelector("#toast");
+const deleteBookDialog = document.querySelector("#delete-book-dialog");
+let deleteBookId = null;
 
+let needsLibraryMigration = false;
 let state = loadState();
+if (needsLibraryMigration) saveState();
 let currentBookId = null;
 let toastTimeout;
 let gestureStart = null;
 let pdfJsPromise = null;
+let epubSupportPromise = null;
+let mobiSupportPromise = null;
 let currentReaderLayout = null;
 let readerLayoutRequest = 0;
 
@@ -50,7 +72,14 @@ function loadState() {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) return { books: structuredClone(DEFAULT_BOOKS), settings: { ...DEFAULT_SETTINGS } };
     const parsed = JSON.parse(stored);
-    const books = Array.isArray(parsed.books) ? parsed.books.filter(isValidBook) : [];
+    let books = Array.isArray(parsed.books) ? parsed.books.filter(isValidBook) : [];
+    if (books.some(book => LEGACY_DEFAULT_BOOK_IDS.has(book.id))) {
+      books = books.filter(book => !LEGACY_DEFAULT_BOOK_IDS.has(book.id));
+      if (!books.some(book => book.id === "welcome-to-lecto")) {
+        books.unshift(structuredClone(DEFAULT_BOOKS[0]));
+      }
+      needsLibraryMigration = true;
+    }
     const settings = parsed.settings && typeof parsed.settings === "object" ? parsed.settings : {};
     return {
       books,
@@ -67,7 +96,10 @@ function loadState() {
 
 function isValidBook(book) {
   return book && typeof book.id === "string" && typeof book.title === "string"
-    && typeof book.author === "string" && typeof book.sourceText === "string";
+    && typeof book.author === "string"
+    && (typeof book.sourceText === "string" || (Array.isArray(book.chapters)
+      && book.chapters.some(chapter => chapter && typeof chapter.title === "string"
+        && typeof chapter.text === "string" && chapter.text.trim())));
 }
 
 function clampInteger(value, min, max, fallback) {
@@ -97,11 +129,18 @@ function splitIntoChunks(text, wordLimit) {
   for (const rawSentence of sentences) {
     const sentence = rawSentence.trim();
     if (!sentence) continue;
-    const sentenceWords = sentence.split(/\s+/).length;
+    const words = sentence.split(/\s+/);
+    const sentenceWords = words.length;
     if (current.length && wordCount + sentenceWords > wordLimit) {
       chunks.push(current.join(" "));
       current = [];
       wordCount = 0;
+    }
+    if (sentenceWords > wordLimit) {
+      for (let index = 0; index < words.length; index += wordLimit) {
+        chunks.push(words.slice(index, index + wordLimit).join(" "));
+      }
+      continue;
     }
     current.push(sentence);
     wordCount += sentenceWords;
@@ -110,8 +149,22 @@ function splitIntoChunks(text, wordLimit) {
   return chunks.length ? chunks : ["This Lecto is ready for your first good page."];
 }
 
+function bookChapters(book) {
+  const chapters = Array.isArray(book.chapters)
+    ? book.chapters.filter(chapter => chapter && typeof chapter.text === "string" && chapter.text.trim())
+    : [];
+  return chapters.length ? chapters : [{ title: "", text: book.sourceText || "" }];
+}
+
 function bookChunks(book) {
-  return splitIntoChunks(book.sourceText, state.settings.chunkSize);
+  const chapters = bookChapters(book);
+  return chapters.flatMap((chapter, chapterIndex) =>
+    splitIntoChunks(chapter.text, state.settings.chunkSize).map(text => ({
+      text,
+      chapterIndex,
+      chapterTitle: chapter.title
+    }))
+  );
 }
 
 function showScreen(name) {
@@ -130,7 +183,7 @@ function renderLibrary() {
   if (!state.books.length) {
     const empty = document.createElement("div");
     empty.className = "empty-library";
-    empty.innerHTML = "<strong>A little room for a good story.</strong>Import a TXT or PDF to add your first book.";
+    empty.innerHTML = "<strong>A little room for a good story.</strong>Import a TXT, PDF, EPUB, MOBI, AZW, or AZW3 to add your first book.";
     libraryList.append(empty);
     return;
   }
@@ -138,14 +191,16 @@ function renderLibrary() {
   for (const book of state.books) {
     const chunks = bookChunks(book);
     const progress = Math.min(Number.isInteger(book.progress) ? book.progress : 0, chunks.length - 1);
-    const card = document.createElement("button");
+    const card = document.createElement("article");
     card.className = "book-card";
-    card.type = "button";
-    card.setAttribute("aria-label", `Read ${book.title} by ${book.author}`);
     const mark = document.createElement("span");
     mark.className = "book-mark";
     mark.setAttribute("aria-hidden", "true");
     mark.textContent = book.title.trim().charAt(0).toUpperCase() || "L";
+    const openButton = document.createElement("button");
+    openButton.className = "book-open";
+    openButton.type = "button";
+    openButton.setAttribute("aria-label", `Read ${book.title} by ${book.author}`);
     const copy = document.createElement("span");
     copy.className = "book-copy";
     const title = document.createElement("span");
@@ -160,16 +215,59 @@ function renderLibrary() {
     const progressLabel = document.createElement("span");
     progressLabel.className = "progress-label";
     progressLabel.textContent = `${progress + 1} of ${chunks.length} pages`;
+    const progressPercentage = document.createElement("span");
+    progressPercentage.className = "progress-percentage";
+    const completion = Math.round(((progress + 1) / chunks.length) * 100);
+    progressPercentage.textContent = `${completion}% finished`;
     const track = document.createElement("span");
     track.className = "progress-track";
     const fill = document.createElement("span");
     fill.className = "progress-fill";
-    fill.style.width = `${((progress + 1) / chunks.length) * 100}%`;
+    fill.style.width = `${completion}%`;
     track.append(fill);
-    progressWrap.append(progressLabel, track);
-    card.append(mark, copy, progressWrap);
-    card.addEventListener("click", () => openBook(book.id));
+    progressWrap.append(progressLabel, progressPercentage, track);
+    openButton.append(copy, progressWrap);
+    openButton.addEventListener("click", () => openBook(book.id));
+    const deleteButton = document.createElement("button");
+    deleteButton.className = "delete-book-button";
+    deleteButton.type = "button";
+    deleteButton.setAttribute("aria-label", `Delete ${book.title}`);
+    deleteButton.title = "Delete book";
+    deleteButton.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg>';
+    deleteButton.addEventListener("click", () => requestDeleteBook(book.id));
+    card.append(mark, openButton, deleteButton);
     libraryList.append(card);
+    fitTitleToTwoLines(title, 19, 15);
+  }
+}
+
+function requestDeleteBook(bookId) {
+  const book = state.books.find(item => item.id === bookId);
+  if (!book) return;
+  deleteBookId = bookId;
+  document.querySelector("#delete-dialog-message").textContent = `“${book.title}” will be removed from your library and its saved reading progress deleted.`;
+  deleteBookDialog.showModal();
+  document.querySelector("#cancel-delete").focus();
+}
+
+function deleteBook(bookId) {
+  const bookIndex = state.books.findIndex(book => book.id === bookId);
+  if (bookIndex < 0) return;
+  const [book] = state.books.splice(bookIndex, 1);
+  if (!saveState()) {
+    state.books.splice(bookIndex, 0, book);
+    return;
+  }
+  renderLibrary();
+  showToast("Book removed from your library.");
+}
+
+function fitTitleToTwoLines(element, baseSize, minimumSize) {
+  element.style.fontSize = `${baseSize}px`;
+  const lineHeight = Number.parseFloat(getComputedStyle(element).lineHeight);
+  while (element.scrollHeight > lineHeight * 2 + 1
+    && Number.parseFloat(element.style.fontSize) > minimumSize) {
+    element.style.fontSize = `${Number.parseFloat(element.style.fontSize) - 1}px`;
   }
 }
 
@@ -191,6 +289,9 @@ async function renderReader() {
   }
   document.querySelector("#reader-title").textContent = book.title;
   document.querySelector("#reader-author").textContent = book.author;
+  const readerTitle = document.querySelector("#reader-title");
+  readerTitle.style.fontSize = "";
+  fitTitleToTwoLines(readerTitle, Number.parseFloat(getComputedStyle(readerTitle).fontSize), 14);
   const readerContent = document.querySelector("#reader-content");
   const request = ++readerLayoutRequest;
   await nextFrame();
@@ -208,13 +309,113 @@ async function renderReader() {
   saveState();
 }
 
-function renderReaderPage(book, layout) {
+function renderReaderPage(book, layout, direction = 0) {
   const readerContent = document.querySelector("#reader-content");
+  const previousContent = readerContent.textContent;
+  const viewport = readerContent.parentElement;
+  if (direction !== 0 && previousContent) {
+    viewport.querySelectorAll(".reader-page-layer").forEach(layer => layer.remove());
+    const makeLayer = text => {
+      const layer = readerContent.cloneNode(true);
+      layer.removeAttribute("id");
+      layer.removeAttribute("tabindex");
+      layer.setAttribute("aria-hidden", "true");
+      layer.classList.remove("gesture-active");
+      layer.classList.add("reader-page-layer");
+      layer.textContent = text;
+      return layer;
+    };
+    const outgoing = makeLayer(previousContent);
+    const incoming = makeLayer(layout.chunks[book.progress].text);
+    outgoing.classList.add(direction > 0 ? "leave-up" : "leave-down");
+    incoming.classList.add(direction > 0 ? "enter-from-below" : "enter-from-above");
+    readerContent.classList.add("page-transition-active");
+    viewport.append(outgoing, incoming);
+
+    incoming.addEventListener("transitionend", event => {
+      if (event.propertyName !== "transform") return;
+      outgoing.remove();
+      incoming.remove();
+      readerContent.classList.remove("page-transition-active");
+    }, { once: true });
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        outgoing.classList.add("is-moving");
+        incoming.classList.add("is-moving");
+      });
+    });
+  }
   readerContent.style.setProperty("--reader-text-size", `${layout.fontSize}px`);
-  readerContent.textContent = layout.chunks[book.progress];
+  const currentPage = layout.chunks[book.progress];
+  readerContent.textContent = currentPage.text;
+  updateChapterNavigation(book, layout, currentPage.chapterIndex);
   document.querySelector("#previous-page").disabled = book.progress === 0;
   document.querySelector("#next-page").disabled = book.progress >= layout.chunks.length - 1;
   document.querySelector("#page-count").textContent = `${String(book.progress + 1).padStart(2, "0")} / ${String(layout.chunks.length).padStart(2, "0")}`;
+}
+
+function updateChapterNavigation(book, layout, chapterIndex) {
+  const navigation = document.querySelector("#chapter-navigation");
+  const chapterPicker = document.querySelector("#chapter-picker-toggle");
+  const chapterPickerValue = document.querySelector("#chapter-picker-value");
+  const chapterMenu = document.querySelector("#chapter-picker-menu");
+  const chapterTitle = document.querySelector("#reader-chapter-title");
+  const chapterPages = new Map();
+  layout.chunks.forEach((page, index) => {
+    if (!chapterPages.has(page.chapterIndex)) chapterPages.set(page.chapterIndex, index);
+  });
+
+  const chapters = bookChapters(book);
+  navigation.hidden = chapters.length < 2 || chapterPages.size < 2;
+  const activeChapter = chapters[chapterIndex];
+  chapterTitle.textContent = activeChapter?.title || "";
+  chapterTitle.hidden = navigation.hidden || !chapterTitle.textContent;
+  if (navigation.hidden) return;
+
+  if (chapterMenu.dataset.bookId !== book.id
+    || chapterMenu.children.length !== chapterPages.size
+    || [...chapterMenu.children].some((option, index) => option.dataset.chapterIndex !== String([...chapterPages.keys()][index]))) {
+    chapterMenu.replaceChildren();
+    for (const index of chapterPages.keys()) {
+      const option = document.createElement("button");
+      option.type = "button";
+      option.className = "chapter-picker-option";
+      option.setAttribute("role", "option");
+      option.tabIndex = -1;
+      option.dataset.chapterIndex = String(index);
+      const page = layout.chunks[chapterPages.get(index)];
+      option.textContent = page.chapterTitle || `Chapter ${index + 1}`;
+      option.addEventListener("click", () => {
+        jumpToChapter(index);
+        closeChapterPicker();
+        chapterPicker.focus();
+      });
+      chapterMenu.append(option);
+    }
+    chapterMenu.dataset.bookId = book.id;
+  }
+  const selectedOption = [...chapterMenu.children].find(option => option.dataset.chapterIndex === String(chapterIndex));
+  if (selectedOption) {
+    chapterPickerValue.textContent = selectedOption.textContent;
+    for (const option of chapterMenu.children) {
+      option.setAttribute("aria-selected", String(option === selectedOption));
+    }
+  }
+}
+
+function openChapterPicker(focusLast = false) {
+  const toggle = document.querySelector("#chapter-picker-toggle");
+  const menu = document.querySelector("#chapter-picker-menu");
+  menu.hidden = false;
+  toggle.setAttribute("aria-expanded", "true");
+  const options = [...menu.querySelectorAll('[role="option"]')];
+  const selected = options.find(option => option.getAttribute("aria-selected") === "true");
+  (focusLast ? options[options.length - 1] : selected || options[0])?.focus();
+}
+
+function closeChapterPicker() {
+  document.querySelector("#chapter-picker-menu").hidden = true;
+  document.querySelector("#chapter-picker-toggle").setAttribute("aria-expanded", "false");
 }
 
 function nextFrame() {
@@ -222,11 +423,14 @@ function nextFrame() {
 }
 
 async function fitChunksToReader(chunks, element) {
+  const maxFontSize = MAX_READER_MAX_TEXT_SIZE
+    - ((state.settings.chunkSize - 50) / 450)
+      * (MAX_READER_MAX_TEXT_SIZE - MIN_READER_MAX_TEXT_SIZE);
   const measureFits = async (candidateChunks, fontSize) => {
     element.style.setProperty("--reader-text-size", `${fontSize}px`);
     await nextFrame();
     for (const chunk of candidateChunks) {
-      element.textContent = chunk;
+      element.textContent = chunk.text;
       if (element.scrollHeight > element.clientHeight + 1) return false;
     }
     return true;
@@ -236,28 +440,33 @@ async function fitChunksToReader(chunks, element) {
   element.style.setProperty("--reader-text-size", `${MIN_READER_TEXT_SIZE}px`);
   await nextFrame();
   for (let index = 0; index < fittedChunks.length;) {
-    element.textContent = fittedChunks[index];
+    element.textContent = fittedChunks[index].text;
     if (element.scrollHeight <= element.clientHeight + 1) {
       index += 1;
       continue;
     }
 
-    const words = fittedChunks[index].split(/\s+/);
+    const currentChunk = fittedChunks[index];
+    const words = currentChunk.text.split(/\s+/);
     if (words.length === 1) {
       const midpoint = Math.ceil(words[0].length / 2);
       if (midpoint === 0 || midpoint === words[0].length) {
         index += 1;
         continue;
       }
-      fittedChunks.splice(index, 1, words[0].slice(0, midpoint), words[0].slice(midpoint));
+      fittedChunks.splice(index, 1,
+        { ...currentChunk, text: words[0].slice(0, midpoint) },
+        { ...currentChunk, text: words[0].slice(midpoint) });
     } else {
       const midpoint = Math.ceil(words.length / 2);
-      fittedChunks.splice(index, 1, words.slice(0, midpoint).join(" "), words.slice(midpoint).join(" "));
+      fittedChunks.splice(index, 1,
+        { ...currentChunk, text: words.slice(0, midpoint).join(" ") },
+        { ...currentChunk, text: words.slice(midpoint).join(" ") });
     }
   }
 
   let low = MIN_READER_TEXT_SIZE;
-  let high = MAX_READER_TEXT_SIZE;
+  let high = maxFontSize;
   while (high - low > 0.25) {
     const middle = (low + high) / 2;
     if (await measureFits(fittedChunks, middle)) low = middle;
@@ -280,7 +489,18 @@ function changePage(direction) {
   if (nextProgress === book.progress) return;
   book.progress = nextProgress;
   saveState();
-  renderReaderPage(book, currentReaderLayout);
+  renderReaderPage(book, currentReaderLayout, direction);
+}
+
+function jumpToChapter(chapterIndex) {
+  const book = currentBook();
+  if (!book || !currentReaderLayout) return;
+  const targetProgress = currentReaderLayout.chunks.findIndex(page => page.chapterIndex === chapterIndex);
+  if (targetProgress < 0 || targetProgress === book.progress) return;
+  const direction = targetProgress > book.progress ? 1 : -1;
+  book.progress = targetProgress;
+  saveState();
+  renderReaderPage(book, currentReaderLayout, direction);
 }
 
 function populateSettings() {
@@ -300,7 +520,7 @@ function applyTheme(themeName) {
   root.style.setProperty("--muted", theme.muted);
   root.style.setProperty("--accent", theme.accent);
   root.style.setProperty("--soft-accent", `${theme.accent}18`);
-  root.style.colorScheme = themeName === "Night" ? "dark" : "light";
+  root.style.colorScheme = themeName === "Night" || themeName === "Forest" ? "dark" : "light";
   document.querySelector('meta[name="theme-color"]').content = theme.background;
 }
 
@@ -316,12 +536,19 @@ async function importFile(file) {
   const extension = file.name.toLowerCase().split(".").pop();
   try {
     let text;
+    let chapters;
     if (extension === "pdf") {
       text = await extractPdfText(file);
     } else if (extension === "txt") {
       text = await file.text();
+    } else if (extension === "epub") {
+      chapters = await extractEbookText(file, "epub");
+      text = chapters.map(chapter => chapter.text).join("\n\n");
+    } else if (["mobi", "azw", "azw3"].includes(extension)) {
+      chapters = await extractEbookText(file, "mobi");
+      text = chapters.map(chapter => chapter.text).join("\n\n");
     } else {
-      throw new Error("Choose a .txt or .pdf file.");
+      throw new Error("Choose a TXT, PDF, EPUB, MOBI, AZW, or AZW3 file.");
     }
     if (!text.trim()) throw new Error("No readable text was found in that file.");
     const title = file.name.replace(/\.[^.]+$/, "").replace(/_/g, " ").replace(/\b\w/g, char => char.toUpperCase());
@@ -329,7 +556,7 @@ async function importFile(file) {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
       title: title || "Untitled",
       author: "Imported by you",
-      sourceText: text,
+      ...(chapters ? { chapters } : { sourceText: text }),
       progress: 0
     };
     state.books.unshift(book);
@@ -346,6 +573,123 @@ async function importFile(file) {
   } finally {
     fileInput.value = "";
   }
+}
+
+async function extractEbookText(file, format) {
+  const cdnRoot = "https://cdn.jsdelivr.net/gh/johnfactotum/foliate-js@78914aef4466eb960965702401634c2cb348e9b1";
+  let book;
+  let closeLoader = () => {};
+  try {
+    if (format === "epub") {
+      const [{ EPUB }, zip] = await loadEpubSupport(cdnRoot);
+      zip.configure({ useWebWorkers: false });
+      const loader = await makeEpubZipLoader(file, zip);
+      closeLoader = loader.close;
+      book = await new EPUB(loader).init();
+    } else {
+      const [{ MOBI }, fflate] = await loadMobiSupport(cdnRoot);
+      book = await new MOBI({ unzlib: fflate.unzlibSync }).open(file);
+    }
+  } catch (error) {
+    await closeLoader();
+    if (error instanceof TypeError && /fetch|import|module/i.test(error.message)) {
+      throw new Error(`${format.toUpperCase()} support could not be loaded. Check your internet connection and try again.`);
+    }
+    throw new Error(`Could not read this ${format.toUpperCase()} file. It may be DRM-protected or use an unsupported format.`);
+  }
+
+  try {
+    const sections = [];
+    for (const [index, section] of book.sections.entries()) {
+      const document = await section.createDocument();
+      sections.push(...extractDocumentChapters(document, `Chapter ${index + 1}`));
+    }
+    if (!sections.length) throw new Error(`No readable text was found in that ${format.toUpperCase()} file.`);
+    return sections;
+  } finally {
+    await closeLoader();
+  }
+}
+
+function extractDocumentChapters(document, fallbackTitle) {
+  const body = document.body || document.documentElement;
+  const headingTag = body.querySelector("h1") ? "H1" : "H2";
+  const fallback = document.querySelector("title")?.textContent?.trim() || fallbackTitle;
+  const blockTags = new Set(["ADDRESS", "BLOCKQUOTE", "BR", "DIV", "H1", "H2", "H3", "H4", "H5", "H6", "LI", "P", "PRE", "SECTION", "TR"]);
+  const chapters = [];
+  const parts = [];
+  let title = fallback;
+  const flushChapter = () => {
+    const text = parts.join("")
+      .replace(/[ \t]*\n[ \t]*/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+    if (text) chapters.push({ title: title.replace(/\s+/g, " ").slice(0, 160), text });
+    parts.length = 0;
+  };
+  const visit = node => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      parts.push(node.textContent);
+      return;
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+    const tagName = node.tagName.toUpperCase();
+    if (["SCRIPT", "STYLE", "NOSCRIPT"].includes(tagName)) return;
+    if (tagName === headingTag) {
+      flushChapter();
+      title = node.textContent.trim() || `Chapter ${chapters.length + 1}`;
+      return;
+    }
+    const isBlock = blockTags.has(tagName);
+    if (isBlock) parts.push("\n");
+    for (const child of node.childNodes) visit(child);
+    if (isBlock) parts.push("\n");
+  };
+  visit(body);
+  flushChapter();
+  return chapters;
+}
+
+async function loadEpubSupport(cdnRoot) {
+  if (!epubSupportPromise) {
+    epubSupportPromise = Promise.all([
+      import(`${cdnRoot}/epub.js`),
+      import(`${cdnRoot}/vendor/zip.js`)
+    ]).catch(error => {
+      epubSupportPromise = null;
+      throw error;
+    });
+  }
+  return epubSupportPromise;
+}
+
+async function loadMobiSupport(cdnRoot) {
+  if (!mobiSupportPromise) {
+    mobiSupportPromise = Promise.all([
+      import(`${cdnRoot}/mobi.js`),
+      import(`${cdnRoot}/vendor/fflate.js`)
+    ]).catch(error => {
+      mobiSupportPromise = null;
+      throw error;
+    });
+  }
+  return mobiSupportPromise;
+}
+
+async function makeEpubZipLoader(file, zip) {
+  const reader = new zip.ZipReader(new zip.BlobReader(file));
+  const entries = await reader.getEntries();
+  const entryMap = new Map(entries.map(entry => [entry.filename, entry]));
+  const loadText = async path => {
+    const entry = entryMap.get(path);
+    return entry ? entry.getData(new zip.TextWriter()) : null;
+  };
+  const loadBlob = async (path, type) => {
+    const entry = entryMap.get(path);
+    return entry ? entry.getData(new zip.BlobWriter(type)) : null;
+  };
+  const getSize = path => entryMap.get(path)?.uncompressedSize ?? 0;
+  return { loadText, loadBlob, getSize, close: () => reader.close() };
 }
 
 async function extractPdfText(file) {
@@ -412,6 +756,53 @@ settingsForm.addEventListener("submit", event => {
 });
 document.querySelector("#previous-page").addEventListener("click", () => changePage(-1));
 document.querySelector("#next-page").addEventListener("click", () => changePage(1));
+const chapterPickerToggle = document.querySelector("#chapter-picker-toggle");
+const chapterPickerMenu = document.querySelector("#chapter-picker-menu");
+chapterPickerToggle.addEventListener("click", () => {
+  if (chapterPickerMenu.hidden) openChapterPicker();
+  else closeChapterPicker();
+});
+chapterPickerToggle.addEventListener("keydown", event => {
+  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+    event.preventDefault();
+    openChapterPicker(event.key === "ArrowUp");
+  }
+});
+chapterPickerMenu.addEventListener("keydown", event => {
+  const options = [...chapterPickerMenu.querySelectorAll('[role="option"]')];
+  const currentIndex = options.indexOf(document.activeElement);
+  let nextIndex = currentIndex;
+  if (event.key === "ArrowDown") nextIndex = Math.min(options.length - 1, currentIndex + 1);
+  else if (event.key === "ArrowUp") nextIndex = Math.max(0, currentIndex - 1);
+  else if (event.key === "Home") nextIndex = 0;
+  else if (event.key === "End") nextIndex = options.length - 1;
+  else if (event.key === "Escape") {
+    event.preventDefault();
+    closeChapterPicker();
+    chapterPickerToggle.focus();
+    return;
+  } else {
+    return;
+  }
+  event.preventDefault();
+  options[nextIndex]?.focus();
+});
+document.addEventListener("pointerdown", event => {
+  if (!event.target.closest(".chapter-picker")) closeChapterPicker();
+});
+document.querySelector("#cancel-delete").addEventListener("click", () => {
+  deleteBookId = null;
+  deleteBookDialog.close();
+});
+document.querySelector("#confirm-delete").addEventListener("click", () => {
+  const bookId = deleteBookId;
+  deleteBookId = null;
+  deleteBookDialog.close();
+  if (bookId) deleteBook(bookId);
+});
+deleteBookDialog.addEventListener("close", () => {
+  deleteBookId = null;
+});
 
 const readerContent = document.querySelector("#reader-content");
 readerContent.addEventListener("pointerdown", event => {
@@ -445,17 +836,22 @@ readerContent.addEventListener("lostpointercapture", () => {
 });
 document.addEventListener("keydown", event => {
   if (screens.reader.hidden || event.altKey || event.ctrlKey || event.metaKey) return;
+  if (event.target instanceof HTMLElement && event.target.closest("input, textarea, select, button, [contenteditable='true']")) return;
   if (event.key === "ArrowRight" || event.key === "ArrowDown") changePage(1);
   if (event.key === "ArrowLeft" || event.key === "ArrowUp") changePage(-1);
   if (event.key === "Escape") showScreen("library");
 });
 let resizeFrame = 0;
 window.addEventListener("resize", () => {
-  if (screens.reader.hidden || resizeFrame) return;
+  if ((screens.reader.hidden && screens.library.hidden) || resizeFrame) return;
   resizeFrame = window.requestAnimationFrame(() => {
     resizeFrame = 0;
-    currentReaderLayout = null;
-    renderReader();
+    if (!screens.reader.hidden) {
+      currentReaderLayout = null;
+      renderReader();
+    } else if (!screens.library.hidden) {
+      renderLibrary();
+    }
   });
 });
 
