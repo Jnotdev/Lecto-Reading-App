@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Lecto">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <title>Lecto — your reading nook</title>
+  <title>Lecto Reading</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icons/lecto-icon-180.png">
   <link rel="icon" href="./icons/lecto-icon.svg" type="image/svg+xml">
@@ -21,7 +21,7 @@
         <div>
           <h1 id="app-title">
             <svg viewBox="0 0 150 150" role="img" aria-label="Lecto" xmlns="http://www.w3.org/2000/svg">
-              <path d="M28.6146 23C23.368 23.0001 18.8333 26.6483 17.7286 31.7572L0.253906 112.573C-1.2397 119.481 4.04544 126 11.1399 126H138.854C146.608 126 151.989 118.303 149.299 111.059L143.185 94.5971C141.397 89.782 136.525 86.8193 131.408 87.4338L80.7824 93.5154L134.774 42.1113C142.034 35.1993 137.122 23.0001 127.079 23H28.6146Z" fill="currentColor"/>
+              <path d="M28.6146 23C23.368 23.0001 18.8333 26.6483 17.7286 31.7572L0.253906 112.573C-1.2397 119.481 4.04544 126 11.1399 126H74.9969H138.854C146.608 126 151.989 118.303 149.299 111.059L143.185 94.5971C141.397 89.782 136.525 86.8193 131.408 87.4338L74.9969 94.5971L134.774 42.1113C142.034 35.1993 137.122 23.0001 127.079 23C110.822 23 94.7187 26.1461 79.6569 32.2647L77.8469 33L76.0369 32.2647C60.9752 26.1461 44.8717 23 28.6146 23Z" fill="currentColor"/>
             </svg>
           </h1>
         </div>
@@ -36,8 +36,8 @@
 
       <div class="library-intro">
         <div>
+          <h2>Your bookshelf is ready.</h2>
           <p class="section-kicker">YOUR PERSONAL LIBRARY</p>
-          <h2>Pick up where you left off.</h2>
         </div>
         <button id="import-button" class="primary-button" type="button">
           <span class="plus-icon" aria-hidden="true">+</span>
@@ -53,7 +53,11 @@
 
     <section id="settings-screen" class="screen" aria-labelledby="settings-title" hidden>
       <header class="subpage-header">
-        <button class="text-button back-button" type="button" data-screen="library">← <span>Library</span></button>
+        <button class="icon-button" type="button" data-screen="library" aria-label="Back to library" title="Back to library">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M19 12H5M12 19l-7-7 7-7" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+          </svg>
+        </button>
 
       </header>
       <div class="settings-heading">
@@ -145,9 +149,8 @@
           <p id="reader-content" class="reader-content" tabindex="0"></p>
         </div>
         <div class="reader-navigation" aria-label="Page navigation">
-          <button id="previous-page" class="nav-button" type="button" aria-label="Previous page">← <span>Previous</span></button>
-          <span id="reader-hint" class="reader-hint">Swipe up or down to turn the page</span>
-          <button id="next-page" class="nav-button" type="button" aria-label="Next page"><span>Next</span> →</button>
+          <button id="previous-page" class="nav-button" type="button"><span>back. </span></button>
+          <button id="next-page" class="nav-button" type="button"><span> next.</span> </button>
         </div>
       </article>
     </section>

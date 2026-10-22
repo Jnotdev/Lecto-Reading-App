@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "Lecto — your reading nook",
+  "name": "Lecto",
   "short_name": "Lecto",
-  "description": "A personal reading nook for your books.",
+  "description": "A personal reading experience.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

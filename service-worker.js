@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_NAME = "lecto-shell-v1";
+const CACHE_NAME = "lecto-shell-v3";
 const SHELL_FILES = [
   "./",
   "./index.html",
@@ -29,10 +29,41 @@ self.addEventListener("activate", event => {
 });
 
 self.addEventListener("fetch", event => {
-  if (event.request.method !== "GET" || new URL(event.request.url).origin !== self.location.origin) return;
+  if (
+    event.request.method !== "GET" ||
+    new URL(event.request.url).origin !== self.location.origin ||
+    event.request.headers.has("range")
+  ) return;
+
   if (event.request.mode === "navigate") {
-    event.respondWith(fetch(event.request).catch(() => caches.match("./index.html")));
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      try {
+        const response = await fetch(event.request);
+        if (response.ok) {
+          cache.put("./index.html", response.clone())
+            .catch(error => console.warn("Could not update the cached Lecto page.", error));
+        }
+        return response;
+      } catch (error) {
+        const offlinePage = await cache.match("./index.html");
+        if (offlinePage) return offlinePage;
+        throw error;
+      }
+    })());
     return;
   }
-  event.respondWith(caches.match(event.request).then(response => response || fetch(event.request)));
+
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    const cachedResponse = await cache.match(event.request);
+    if (cachedResponse) return cachedResponse;
+
+    const response = await fetch(event.request);
+    if (response.ok && response.type === "basic") {
+      cache.put(event.request, response.clone())
+        .catch(error => console.warn("Could not cache a Lecto resource.", error));
+    }
+    return response;
+  })());
 });
